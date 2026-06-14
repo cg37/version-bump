@@ -1,0 +1,53 @@
+{
+  "name": "version-bump",
+  "displayName": "Version Bump",
+  "description": "Bump npm version and push tags from the sidebar",
+  "version": "1.0.0",
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "keywords": ["npm", "version", "git", "push", "release"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "version-bump.bumpAndPush",
+        "title": "Version Bump: Bump & Push"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "version-bump",
+          "title": "Version Bump",
+          "icon": "$(megaphone)"
+        }
+      ]
+    },
+    "views": {
+      "version-bump": [
+        {
+          "type": "webview",
+          "id": "versionBumpView",
+          "name": "Bump & Push"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/vscode": "^1.120.0",
+    "typescript": "^6.0.3"
+  }
+}
