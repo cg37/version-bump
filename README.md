@@ -14,6 +14,7 @@ Bump npm version and push tags from the VS Code sidebar.
 3. Click **Bump & Push**
 
 The extension will:
+
 - Run `npm version <type>` to bump the version
 - Push the new tag to the remote with `git push --follow-tags`
 
