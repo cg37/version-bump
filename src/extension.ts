@@ -1,22 +1,30 @@
-import * as vscode from 'vscode';
-import { VersionBumpViewProvider } from './versionBumpViewProvider';
+import * as vscode from "vscode";
+import { VersionBumpViewProvider } from "./provider/VersionBumpViewProvider";
+import { Logger } from "./logger";
 
-export function activate(context: vscode.ExtensionContext) {
-	const outputChannel = vscode.window.createOutputChannel('Version Bump');
-	context.subscriptions.push(outputChannel);
+export function activate(context: vscode.ExtensionContext): void {
+    const outputChannel = vscode.window.createOutputChannel("Version Bump");
+    context.subscriptions.push(outputChannel);
 
-	const provider = new VersionBumpViewProvider(context.extensionUri, outputChannel);
+    const logger = new Logger(outputChannel);
 
-	const viewRegistration = vscode.window.registerWebviewViewProvider(
-		VersionBumpViewProvider.viewType,
-		provider
-	);
-	context.subscriptions.push(viewRegistration);
+    const provider = new VersionBumpViewProvider(context.extensionUri, logger);
 
-	const bumpCommand = vscode.commands.registerCommand('version-bump.bumpAndPush', async () => {
-		await provider.executeBumpAndPush();
-	});
-	context.subscriptions.push(bumpCommand);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            VersionBumpViewProvider.viewType,
+            provider,
+        ),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "version-bump.bumpAndPush",
+            async () => {
+                await provider.execute();
+            },
+        ),
+    );
 }
 
-export function deactivate() {}
+export function deactivate(): void {}
