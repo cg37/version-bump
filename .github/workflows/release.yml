@@ -80,6 +80,6 @@ jobs:
 
             - name: Publish to VS Code Marketplace
               if: ${{ !inputs.dry_run }}
-              run: npx @vscode/vsce publish --no-keytar
+              run: npx @vscode/vsce publish
               env:
                   VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
