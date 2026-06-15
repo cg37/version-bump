@@ -67,6 +67,13 @@
             ]
         }
     },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "@vscode/vsce-sign",
+            "esbuild",
+            "keytar"
+        ]
+    },
     "devDependencies": {
         "@types/node": "^25.9.3",
         "@types/vscode": "^1.120.0",
