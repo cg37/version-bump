@@ -5,6 +5,28 @@ import { Logger } from "../logger";
 import { bumpAndPush } from "../commands/bumpAndPush";
 import type { WebviewMessage, ExtensionMessage } from "../types/messages";
 
+/** Compute what the next version string will be after a bump. */
+function computeNextVersion(current: string, bumpType: string): string {
+    const match = current.match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!match) return current;
+    let [, major, minor, patch] = match.map(Number);
+    if (bumpType === "major") { major++; minor = 0; patch = 0; }
+    else if (bumpType === "minor") { minor++; patch = 0; }
+    else { patch++; }
+    return `${major}.${minor}.${patch}`;
+}
+
+/** Read the "version" field from a package.json file. Returns "" on failure. */
+function readPackageVersion(pkgPath: string): string {
+    try {
+        const raw = fs.readFileSync(pkgPath, "utf-8");
+        const json = JSON.parse(raw) as { version?: string };
+        return json.version ?? "";
+    } catch {
+        return "";
+    }
+}
+
 export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = "versionBumpView";
 
@@ -36,8 +58,13 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(
             async (message: WebviewMessage) => {
                 switch (message.type) {
+                    case "ready":
+                        // WebView is mounted — push current version info
+                        this._sendVersionInfo();
+                        break;
                     case "versionTypeChanged":
                         this._selectedVersionType = message.value;
+                        this._sendVersionInfo();
                         break;
                     case "executeBump":
                         await this._handleExecuteBump();
@@ -49,6 +76,23 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
 
     public async execute(): Promise<void> {
         await this._handleExecuteBump();
+    }
+
+    private _getWorkspacePkgPath(): string | null {
+        const folders = vscode.workspace.workspaceFolders;
+        if (!folders || folders.length === 0) return null;
+        return path.join(folders[0].uri.fsPath, "package.json");
+    }
+
+    private _sendVersionInfo(): void {
+        if (!this._view) return;
+        const pkgPath = this._getWorkspacePkgPath();
+        const current = pkgPath ? readPackageVersion(pkgPath) : "";
+        const next = current
+            ? computeNextVersion(current, this._selectedVersionType)
+            : "";
+        const msg: ExtensionMessage = { type: "setVersionInfo", current, next };
+        this._view.webview.postMessage(msg);
     }
 
     private async _handleExecuteBump(): Promise<void> {
@@ -82,6 +126,8 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
                 vscode.window.showInformationMessage(
                     "Version bump and push completed successfully.",
                 );
+                // Refresh version display after successful bump
+                this._sendVersionInfo();
             } else {
                 vscode.window.showErrorMessage(
                     `Version bump failed: ${result.error}`,
@@ -115,11 +161,9 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
         let html = fs.readFileSync(htmlPath, "utf-8");
 
         // Rewrite all src/href paths to use vscode-resource URIs
-        // so the webview can load the bundled assets
         html = html.replace(
             /(src|href)="([^"]+)"/g,
             (_match: string, attr: string, value: string) => {
-                // Skip external URLs and inline data
                 if (value.startsWith("http") || value.startsWith("data:")) {
                     return _match;
                 }
