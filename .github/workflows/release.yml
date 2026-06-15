@@ -4,9 +4,18 @@ on:
     push:
         tags:
             - "v*"
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: "Only build & validate, skip release and publish"
+                type: boolean
+                default: false
 
 permissions:
     contents: write
+
+env:
+    VERSION_TAG: ${{ github.ref_name }}
 
 jobs:
     release:
@@ -32,8 +41,17 @@ jobs:
             - name: Compile extension
               run: pnpm run compile
 
+            - name: Determine version label
+              id: label
+              run: |
+                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                      echo "tag=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+                  fi
+
             - name: Package VSIX
-              run: npx @vscode/vsce package --out version-bump-${{ github.ref_name }}.vsix
+              run: npx @vscode/vsce package --out version-bump-${{ steps.label.outputs.tag }}.vsix
 
             - name: Generate release notes
               id: notes
@@ -50,16 +68,18 @@ jobs:
                   echo "EOF" >> "$GITHUB_OUTPUT"
 
             - name: Create GitHub Release
+              if: ${{ !inputs.dry_run }}
               uses: softprops/action-gh-release@v2
               with:
                   tag_name: ${{ github.ref_name }}
                   name: Release ${{ github.ref_name }}
                   body: ${{ steps.notes.outputs.notes }}
-                  files: version-bump-${{ github.ref_name }}.vsix
+                  files: version-bump-${{ steps.label.outputs.tag }}.vsix
                   draft: false
                   prerelease: false
 
             - name: Publish to VS Code Marketplace
+              if: ${{ !inputs.dry_run }}
               run: npx @vscode/vsce publish --no-keytar
               env:
                   VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
