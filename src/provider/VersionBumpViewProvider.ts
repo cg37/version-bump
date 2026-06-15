@@ -26,7 +26,9 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._extensionUri],
+            localResourceRoots: [
+                vscode.Uri.joinPath(this._extensionUri, "out", "webview"),
+            ],
         };
 
         webviewView.webview.html = this._buildHtml(webviewView.webview);
@@ -102,22 +104,39 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
     }
 
     private _buildHtml(webview: vscode.Webview): string {
-        const htmlPath = path.join(
-            this._extensionUri.fsPath,
+        const webviewOutDir = vscode.Uri.joinPath(
+            this._extensionUri,
             "out",
             "webview",
-            "sidebar.html",
-        );
-        const html = fs.readFileSync(htmlPath, "utf-8");
-
-        const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(this._extensionUri, "out", "webview", "sidebar.js"),
         );
 
+        // Read the Vite-built index.html
+        const htmlPath = path.join(webviewOutDir.fsPath, "index.html");
+        let html = fs.readFileSync(htmlPath, "utf-8");
+
+        // Rewrite all src/href paths to use vscode-resource URIs
+        // so the webview can load the bundled assets
+        html = html.replace(
+            /(src|href)="([^"]+)"/g,
+            (_match: string, attr: string, value: string) => {
+                // Skip external URLs and inline data
+                if (value.startsWith("http") || value.startsWith("data:")) {
+                    return _match;
+                }
+                const assetUri = webview.asWebviewUri(
+                    vscode.Uri.joinPath(webviewOutDir, value.replace(/^\//, "")),
+                );
+                return `${attr}="${assetUri}"`;
+            },
+        );
+
+        // Inject CSP meta tag with the correct webview csp source
         const cspSource = webview.cspSource;
+        html = html.replace(
+            /<meta\s+http-equiv="Content-Security-Policy"[^>]*>/,
+            `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource};">`,
+        );
 
-        return html
-            .replace(/\{\{CSP_SOURCE\}\}/g, cspSource)
-            .replace(/\{\{SCRIPT_URI\}\}/g, scriptUri.toString());
+        return html;
     }
 }
