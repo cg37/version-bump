@@ -8,6 +8,7 @@ const versionType = ref<VersionType>("patch");
 const isRunning = ref(false);
 const currentVersion = ref("");
 const nextVersion = ref("");
+const hasChanges = ref(false);
 
 function onVersionTypeChange() {
     vscode.postMessage({ type: "versionTypeChanged", value: versionType.value });
@@ -25,6 +26,7 @@ onMounted(() => {
         } else if (msg.type === "setVersionInfo") {
             currentVersion.value = msg.current;
             nextVersion.value = msg.next;
+            hasChanges.value = msg.hasChanges;
         }
     });
     // Notify the extension that the webview is ready
@@ -64,10 +66,13 @@ onMounted(() => {
         </div>
 
         <div class="section">
-            <button :disabled="isRunning || !currentVersion" @click="onBump">
+            <button :disabled="isRunning || !currentVersion || !hasChanges" @click="onBump">
                 <span v-if="isRunning" class="spinner"></span>
                 {{ isRunning ? "Running..." : "Bump &amp; Push" }}
             </button>
+            <div v-if="currentVersion && !hasChanges && !isRunning" class="no-changes-tip">
+                ✓ Nothing to commit — make some changes first
+            </div>
         </div>
 
         <div class="hint">
@@ -198,6 +203,12 @@ button:disabled {
     color: var(--vscode-descriptionForeground);
     margin-top: 4px;
     line-height: 1.4;
+}
+
+.no-changes-tip {
+    font-size: 11px;
+    color: var(--vscode-terminal-ansiGreen);
+    margin-top: 4px;
 }
 
 .spinner {

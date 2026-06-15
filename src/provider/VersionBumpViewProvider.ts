@@ -1,9 +1,24 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import * as childProcess from "child_process";
+import * as util from "util";
 import { Logger } from "../logger";
 import { bumpAndPush } from "../commands/bumpAndPush";
 import type { WebviewMessage, ExtensionMessage } from "../types/messages";
+
+const exec = util.promisify(childProcess.exec);
+
+/** Returns true when the git working tree has uncommitted changes. */
+async function hasGitChanges(cwd: string): Promise<boolean> {
+    try {
+        const { stdout } = await exec("git status --porcelain", { cwd });
+        return stdout.trim().length > 0;
+    } catch {
+        // Not a git repo or git not available — don't block the button
+        return true;
+    }
+}
 
 /** Compute what the next version string will be after a bump. */
 function computeNextVersion(current: string, bumpType: string): string {
@@ -60,11 +75,11 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
                 switch (message.type) {
                     case "ready":
                         // WebView is mounted — push current version info
-                        this._sendVersionInfo();
+                        void this._sendVersionInfo();
                         break;
                     case "versionTypeChanged":
                         this._selectedVersionType = message.value;
-                        this._sendVersionInfo();
+                        void this._sendVersionInfo();
                         break;
                     case "executeBump":
                         await this._handleExecuteBump();
@@ -84,14 +99,18 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
         return path.join(folders[0].uri.fsPath, "package.json");
     }
 
-    private _sendVersionInfo(): void {
+    private async _sendVersionInfo(): Promise<void> {
         if (!this._view) return;
         const pkgPath = this._getWorkspacePkgPath();
         const current = pkgPath ? readPackageVersion(pkgPath) : "";
         const next = current
             ? computeNextVersion(current, this._selectedVersionType)
             : "";
-        const msg: ExtensionMessage = { type: "setVersionInfo", current, next };
+        const folders = vscode.workspace.workspaceFolders;
+        const hasChanges = folders
+            ? await hasGitChanges(folders[0].uri.fsPath)
+            : false;
+        const msg: ExtensionMessage = { type: "setVersionInfo", current, next, hasChanges };
         this._view.webview.postMessage(msg);
     }
 
@@ -127,7 +146,7 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
                     "Version bump and push completed successfully.",
                 );
                 // Refresh version display after successful bump
-                this._sendVersionInfo();
+                void this._sendVersionInfo();
             } else {
                 vscode.window.showErrorMessage(
                     `Version bump failed: ${result.error}`,

@@ -7,7 +7,7 @@ export type WebviewMessage =
 
 export type ExtensionMessage =
     | { type: "setRunningState"; value: boolean }
-    | { type: "setVersionInfo"; current: string; next: string };
+    | { type: "setVersionInfo"; current: string; next: string; hasChanges: boolean };
 
 declare function acquireVsCodeApi(): {
     postMessage(msg: WebviewMessage): void;

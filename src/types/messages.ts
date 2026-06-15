@@ -7,4 +7,4 @@ export type WebviewMessage =
 // Messages sent from the extension → webview
 export type ExtensionMessage =
     | { type: "setRunningState"; value: boolean }
-    | { type: "setVersionInfo"; current: string; next: string };
+    | { type: "setVersionInfo"; current: string; next: string; hasChanges: boolean };
