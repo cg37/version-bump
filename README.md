@@ -28,13 +28,13 @@ The extension will:
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Compile TypeScript
-npm run compile
+pnpm run compile
 
 # Watch mode
-npm run watch
+pnpm run watch
 ```
 
 ## License
