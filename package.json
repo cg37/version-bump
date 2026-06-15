@@ -19,6 +19,7 @@
         "compile": "npm run compile:ext && npm run compile:webview",
         "compile:ext": "tsc -p ./",
         "compile:webview": "vite build",
+        "lint": "tsc -p ./ --noEmit --pretty",
         "watch": "npm run watch:ext & npm run watch:webview",
         "watch:ext": "tsc -watch -p ./",
         "watch:webview": "vite build --watch",
