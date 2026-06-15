@@ -2,7 +2,7 @@
 
 Bump npm version and push tags directly from the VS Code sidebar.
 
-![Version Bump](images/activity-icon.svg)
+![Version Bump](images/activity-icon.png)
 
 ## Features
 
