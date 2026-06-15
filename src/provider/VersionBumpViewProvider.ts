@@ -1,53 +1,15 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
-import * as childProcess from "child_process";
-import * as util from "util";
 import { Logger } from "../logger";
 import { bumpAndPush } from "../commands/bumpAndPush";
 import type { WebviewMessage, ExtensionMessage } from "../types/messages";
 
-const exec = util.promisify(childProcess.exec);
-
-/**
- * Returns false (disable button) only when ALL of the following are true:
- *   - working tree is clean (no uncommitted changes)
- *   - local HEAD is at the same commit as its upstream
- *
- * In all other cases (has changes, is ahead, git unavailable, etc.) returns true.
- */
-async function hasGitChanges(cwd: string): Promise<boolean> {
-    try {
-        // 1. Any uncommitted changes → allow
-        const { stdout: statusOut } = await exec("git status --porcelain", { cwd });
-        if (statusOut.trim().length > 0) {
-            return true;
-        }
-
-        // 2. Resolve the current branch's upstream (e.g. origin/main, origin/master)
-        const { stdout: upstreamRef } = await exec(
-            "git rev-parse --abbrev-ref @{upstream}",
-            { cwd },
-        );
-        const upstream = upstreamRef.trim();
-        if (!upstream) {
-            // No upstream configured — don't block
-            return true;
-        }
-
-        // 3. Compare local HEAD with upstream
-        const { stdout: localHash } = await exec("git rev-parse HEAD", { cwd });
-        const { stdout: remoteHash } = await exec(`git rev-parse ${upstream}`, { cwd });
-        if (localHash.trim() !== remoteHash.trim()) {
-            return true;
-        }
-
-        // Clean working tree AND same commit as upstream → nothing to bump
-        return false;
-    } catch {
-        // Git not available, not a repo, or no upstream — don't block
-        return true;
-    }
+/** Check whether a package.json with a valid version exists in the workspace. */
+function hasValidPackageJson(cwd: string): boolean {
+    const pkgPath = path.join(cwd, "package.json");
+    const version = readPackageVersion(pkgPath);
+    return version !== "";
 }
 
 /** Compute what the next version string will be after a bump.
@@ -178,9 +140,7 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
             ? computeNextVersion(current, this._selectedVersionType)
             : "";
         const folders = vscode.workspace.workspaceFolders;
-        const hasChanges = folders
-            ? await hasGitChanges(folders[0].uri.fsPath)
-            : false;
+        const hasChanges = folders ? hasValidPackageJson(folders[0].uri.fsPath) : false;
         const msg: ExtensionMessage = { type: "setVersionInfo", current, next, hasChanges };
         this._view.webview.postMessage(msg);
     }
