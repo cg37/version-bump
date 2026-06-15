@@ -1,3 +1,80 @@
+<template>
+    <div class="container">
+        <div>
+            <h3>Version Bump</h3>
+        </div>
+
+        <!-- Workspace selector (only shown when >1 workspace) -->
+        <div v-if="workspaces.length > 1" class="section">
+            <label for="workspaceSelect">Workspace</label>
+            <select
+                id="workspaceSelect"
+                v-model="selectedWorkspace"
+                @change="onWorkspaceChange"
+            >
+                <option
+                    v-for="ws in workspaces"
+                    :key="ws.path"
+                    :value="ws.path"
+                >
+                    {{ ws.name }} (v{{ ws.version }})
+                </option>
+            </select>
+        </div>
+
+        <!-- Version info card -->
+        <div v-if="currentVersion" class="version-card">
+            <div class="version-row">
+                <span class="version-label">Current</span>
+                <span class="version-value">v{{ currentVersion }}</span>
+            </div>
+            <div class="version-arrow">↓</div>
+            <div class="version-row">
+                <span class="version-label">After bump</span>
+                <span class="version-value next">v{{ nextVersion }}</span>
+            </div>
+        </div>
+        <div v-else class="version-empty">
+            No package.json found in workspace
+        </div>
+
+        <div class="section">
+            <label for="versionType">Bump Type</label>
+            <select
+                id="versionType"
+                v-model="versionType"
+                @change="onVersionTypeChange"
+            >
+                <option value="patch">patch — fix (0.0.X)</option>
+                <option value="minor">minor — feature (0.X.0)</option>
+                <option value="major">major — breaking (X.0.0)</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <button
+                :disabled="isRunning || !currentVersion || !hasChanges"
+                @click="onBump"
+            >
+                <span v-if="isRunning" class="spinner"></span>
+                {{ isRunning ? "Running..." : "Bump &amp; Push" }}
+            </button>
+            <div
+                v-if="currentVersion && !hasChanges && !isRunning"
+                class="no-changes-tip"
+            >
+                ✓ Nothing to bump — no uncommitted changes or unpushed commits
+            </div>
+        </div>
+
+        <div class="hint">
+            Runs <code>npm version &lt;type&gt;</code> followed by
+            <code>git push --follow-tags</code>.<br />
+            Check the "Version Bump" output channel for logs.
+        </div>
+    </div>
+</template>
+
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { vscode, type ExtensionMessage } from "./vscode";
@@ -15,11 +92,17 @@ const workspaces = ref<{ path: string; name: string; version: string }[]>([]);
 const selectedWorkspace = ref("");
 
 function onVersionTypeChange() {
-    vscode.postMessage({ type: "versionTypeChanged", value: versionType.value });
+    vscode.postMessage({
+        type: "versionTypeChanged",
+        value: versionType.value,
+    });
 }
 
 function onWorkspaceChange() {
-    vscode.postMessage({ type: "workspaceSelected", value: selectedWorkspace.value });
+    vscode.postMessage({
+        type: "workspaceSelected",
+        value: selectedWorkspace.value,
+    });
 }
 
 function onBump() {
@@ -44,65 +127,6 @@ onMounted(() => {
     vscode.postMessage({ type: "ready" });
 });
 </script>
-
-<template>
-    <div class="container">
-        <div>
-            <h3>Version Bump</h3>
-        </div>
-
-        <!-- Workspace selector (only shown when >1 workspace) -->
-        <div v-if="workspaces.length > 1" class="section">
-            <label for="workspaceSelect">Workspace</label>
-            <select id="workspaceSelect" v-model="selectedWorkspace" @change="onWorkspaceChange">
-                <option v-for="ws in workspaces" :key="ws.path" :value="ws.path">
-                    {{ ws.name }} (v{{ ws.version }})
-                </option>
-            </select>
-        </div>
-
-        <!-- Version info card -->
-        <div v-if="currentVersion" class="version-card">
-            <div class="version-row">
-                <span class="version-label">Current</span>
-                <span class="version-value">v{{ currentVersion }}</span>
-            </div>
-            <div class="version-arrow">↓</div>
-            <div class="version-row">
-                <span class="version-label">After bump</span>
-                <span class="version-value next">v{{ nextVersion }}</span>
-            </div>
-        </div>
-        <div v-else class="version-empty">
-            No package.json found in workspace
-        </div>
-
-        <div class="section">
-            <label for="versionType">Bump Type</label>
-            <select id="versionType" v-model="versionType" @change="onVersionTypeChange">
-                <option value="patch">patch — fix (0.0.X)</option>
-                <option value="minor">minor — feature (0.X.0)</option>
-                <option value="major">major — breaking (X.0.0)</option>
-            </select>
-        </div>
-
-        <div class="section">
-            <button :disabled="isRunning || !currentVersion || !hasChanges" @click="onBump">
-                <span v-if="isRunning" class="spinner"></span>
-                {{ isRunning ? "Running..." : "Bump &amp; Push" }}
-            </button>
-            <div v-if="currentVersion && !hasChanges && !isRunning" class="no-changes-tip">
-                ✓ Nothing to bump — no uncommitted changes or unpushed commits
-            </div>
-        </div>
-
-        <div class="hint">
-            Runs <code>npm version &lt;type&gt;</code> followed by
-            <code>git push --follow-tags</code>.<br />
-            Check the "Version Bump" output channel for logs.
-        </div>
-    </div>
-</template>
 
 <style>
 * {
