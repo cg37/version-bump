@@ -2,7 +2,7 @@
     "name": "version-bump",
     "displayName": "Version Bump",
     "description": "Bump npm version and push tags from the sidebar",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "Craig37",
     "icon": "images/icon.png",
     "repository": {
