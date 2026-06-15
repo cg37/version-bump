@@ -60,6 +60,6 @@ jobs:
                   prerelease: false
 
             - name: Publish to VS Code Marketplace
-              run: npx @vscode/vsce publish
+              run: npx @vscode/vsce publish --no-keytar
               env:
                   VSCE_PAT: ${{ secrets.VSCE_TOKEN }}

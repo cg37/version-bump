@@ -70,8 +70,7 @@
     "pnpm": {
         "onlyBuiltDependencies": [
             "@vscode/vsce-sign",
-            "esbuild",
-            "keytar"
+            "esbuild"
         ]
     },
     "devDependencies": {
