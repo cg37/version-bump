@@ -1,9 +1,20 @@
-.vscode/**
-.vscode-test/**
-.gitignore
-.vscodeignore
+# Source files (compiled output is in out/)
 src/**
+webview-src/**
+
+# Config files
 tsconfig.json
-node_modules/**
-**/*.ts
-**/*.map
+vite.config.ts
+.vscode/**
+
+# Lock files & misc
+pnpm-lock.yaml
+package-lock.json
+.gitignore
+.git/**
+
+# Source maps (optional: remove if you want debugging support)
+out/**/*.map
+
+# Generated package
+*.vsix
