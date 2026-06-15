@@ -1,0 +1,38 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+devDependencies:
+  '@types/node':
+    specifier: ^25.9.3
+    version: 25.9.3
+  '@types/vscode':
+    specifier: ^1.120.0
+    version: 1.120.0
+  typescript:
+    specifier: ^6.0.3
+    version: 6.0.3
+
+packages:
+
+  /@types/node@25.9.3:
+    resolution: {integrity: sha1-Ed/noz5o+lxWDwqnbMVZViHvJrk=, tarball: http://r.npm.sankuai.com/@types/node/download/@types/node-25.9.3.tgz}
+    dependencies:
+      undici-types: 7.24.6
+    dev: true
+
+  /@types/vscode@1.120.0:
+    resolution: {integrity: sha1-rzbvbplSqmQ+NoJGgZfjGb6AtK4=, tarball: http://r.npm.sankuai.com/@types/vscode/download/@types/vscode-1.120.0.tgz}
+    dev: true
+
+  /typescript@6.0.3:
+    resolution: {integrity: sha1-kCUdwAeRbpcnhsuU100VsYVXfSE=, tarball: http://r.npm.sankuai.com/typescript/download/typescript-6.0.3.tgz}
+    engines: {node: '>=14.17'}
+    hasBin: true
+    dev: true
+
+  /undici-types@7.24.6:
+    resolution: {integrity: sha1-YSdbSF1/1OnSacfPBOwoc8nMD5E=, tarball: http://r.npm.sankuai.com/undici-types/download/undici-types-7.24.6.tgz}
+    dev: true

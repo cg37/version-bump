@@ -6,10 +6,20 @@
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./ && mkdir -p out/webview && cp src/webview/sidebar.{js,html} out/webview/",
-    "watch": "tsc -watch -p ./"
+    "compile": "npm run compile:ext && npm run compile:webview",
+    "compile:ext": "tsc -p ./",
+    "compile:webview": "vite build",
+    "watch": "npm run watch:ext & npm run watch:webview",
+    "watch:ext": "tsc -watch -p ./",
+    "watch:webview": "vite build --watch"
   },
-  "keywords": ["npm", "version", "git", "push", "release"],
+  "keywords": [
+    "npm",
+    "version",
+    "git",
+    "push",
+    "release"
+  ],
   "author": "",
   "license": "MIT",
   "engines": {
@@ -48,6 +58,10 @@
   "devDependencies": {
     "@types/node": "^25.9.3",
     "@types/vscode": "^1.120.0",
-    "typescript": "^6.0.3"
+    "@vitejs/plugin-vue": "^5.2.4",
+    "@vue/tsconfig": "^0.9.1",
+    "typescript": "^6.0.3",
+    "vite": "^6.4.3",
+    "vue": "^3.5.38"
   }
 }
