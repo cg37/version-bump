@@ -29,16 +29,13 @@ export interface BumpResult {
 export async function bumpAndPush(
     cwd: string,
     versionType: string,
-    logger: Logger,
+    logger: Logger
 ): Promise<BumpResult> {
     try {
         // Step 1: npm version <type>
         const versionCmd = `npm version ${versionType}`;
         logger.log(`Executing: ${versionCmd}`);
-        const { stdout: versionOut, stderr: versionErr } = await exec(
-            versionCmd,
-            { cwd },
-        );
+        const { stdout: versionOut, stderr: versionErr } = await exec(versionCmd, { cwd });
         if (versionOut) logger.log(versionOut.trim());
         if (versionErr) {
             versionErr.split("\n").forEach((line) => {
@@ -50,7 +47,7 @@ export async function bumpAndPush(
         const pushCmd = "git push origin --follow-tags";
         logger.log(`Executing: ${pushCmd}`);
         const { stdout: pushOut, stderr: pushErr } = await exec(pushCmd, {
-            cwd,
+            cwd
         });
         if (pushOut) logger.log(pushOut.trim());
         if (pushErr) logger.log(pushErr.trim());
