@@ -1,11 +1,14 @@
 import * as vscode from "vscode";
 
+export type LogLevel = "info" | "warn" | "error";
+
 export class Logger {
     constructor(private readonly channel: vscode.OutputChannel) {}
 
-    log(message: string): void {
+    log(message: string, level: LogLevel = "info"): void {
         const timestamp = new Date().toLocaleTimeString();
-        this.channel.appendLine(`[${timestamp}] ${message}`);
+        const prefix = level === "warn" ? "[WARN] " : level === "error" ? "[ERR]  " : "";
+        this.channel.appendLine(`[${timestamp}] ${prefix}${message}`);
     }
 
     clear(): void {

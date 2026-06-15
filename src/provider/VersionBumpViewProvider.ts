@@ -12,7 +12,7 @@ const exec = util.promisify(childProcess.exec);
 /**
  * Returns false (disable button) only when ALL of the following are true:
  *   - working tree is clean (no uncommitted changes)
- *   - local HEAD is at the same commit as origin/master
+ *   - local HEAD is at the same commit as its upstream
  *
  * In all other cases (has changes, is ahead, git unavailable, etc.) returns true.
  */
@@ -24,25 +24,38 @@ async function hasGitChanges(cwd: string): Promise<boolean> {
             return true;
         }
 
-        // 2. Compare local HEAD with origin/master
-        //    If they differ (local is ahead or behind), allow bump
+        // 2. Resolve the current branch's upstream (e.g. origin/main, origin/master)
+        const { stdout: upstreamRef } = await exec(
+            "git rev-parse --abbrev-ref @{upstream}",
+            { cwd },
+        );
+        const upstream = upstreamRef.trim();
+        if (!upstream) {
+            // No upstream configured — don't block
+            return true;
+        }
+
+        // 3. Compare local HEAD with upstream
         const { stdout: localHash } = await exec("git rev-parse HEAD", { cwd });
-        const { stdout: remoteHash } = await exec("git rev-parse origin/master", { cwd });
+        const { stdout: remoteHash } = await exec(`git rev-parse ${upstream}`, { cwd });
         if (localHash.trim() !== remoteHash.trim()) {
             return true;
         }
 
-        // Clean working tree AND same commit as origin/master → nothing to bump
+        // Clean working tree AND same commit as upstream → nothing to bump
         return false;
     } catch {
-        // Git not available, not a repo, or origin/master doesn't exist — don't block
+        // Git not available, not a repo, or no upstream — don't block
         return true;
     }
 }
 
-/** Compute what the next version string will be after a bump. */
+/** Compute what the next version string will be after a bump.
+ *  Supports semver with optional pre-release tags (e.g. 1.0.0-alpha.1).
+ */
 function computeNextVersion(current: string, bumpType: string): string {
-    const match = current.match(/^(\d+)\.(\d+)\.(\d+)/);
+    // Match core semver: major.minor.patch[-prerelease][+build]
+    const match = current.match(/^(\d+)\.(\d+)\.(\d+)(?:-([\w.]+))?(?:\+.+)?$/);
     if (!match) return current;
     let [, major, minor, patch] = match.map(Number);
     if (bumpType === "major") { major++; minor = 0; patch = 0; }
@@ -68,6 +81,7 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private _selectedVersionType = "patch";
     private _isRunning = false;
+    private _selectedWorkspace = "";
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -95,6 +109,10 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
                 switch (message.type) {
                     case "ready":
                         // WebView is mounted — push current version info
+                        void this._sendWorkspaceList();
+                        break;
+                    case "workspaceSelected":
+                        this._selectedWorkspace = message.value;
                         void this._sendVersionInfo();
                         break;
                     case "versionTypeChanged":
@@ -116,7 +134,40 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
     private _getWorkspacePkgPath(): string | null {
         const folders = vscode.workspace.workspaceFolders;
         if (!folders || folders.length === 0) return null;
-        return path.join(folders[0].uri.fsPath, "package.json");
+        const target = this._selectedWorkspace
+            ? folders.find((f) => f.uri.fsPath === this._selectedWorkspace)
+            : folders[0];
+        if (!target) return null;
+        return path.join(target.uri.fsPath, "package.json");
+    }
+
+    private _listWorkspaces(): { path: string; name: string; version: string }[] {
+        const folders = vscode.workspace.workspaceFolders ?? [];
+        return folders
+            .map((f) => {
+                const pkgPath = path.join(f.uri.fsPath, "package.json");
+                const version = readPackageVersion(pkgPath);
+                const name = f.name;
+                return { path: f.uri.fsPath, name, version };
+            })
+            .filter((w) => w.version !== "");
+    }
+
+    private async _sendWorkspaceList(): Promise<void> {
+        if (!this._view) return;
+        const workspaces = this._listWorkspaces();
+        if (workspaces.length === 0) return;
+        if (!this._selectedWorkspace && workspaces.length > 0) {
+            this._selectedWorkspace = workspaces[0].path;
+        }
+        const msg: ExtensionMessage = {
+            type: "setWorkspaceList",
+            workspaces,
+            selected: this._selectedWorkspace,
+        };
+        this._view.webview.postMessage(msg);
+        // After workspace list is sent, also send version info
+        void this._sendVersionInfo();
     }
 
     private async _sendVersionInfo(): Promise<void> {
@@ -168,8 +219,11 @@ export class VersionBumpViewProvider implements vscode.WebviewViewProvider {
                 // Refresh version display after successful bump
                 void this._sendVersionInfo();
             } else {
+                const hint = result.recoveryHint
+                    ? ` ${result.recoveryHint}`
+                    : "";
                 vscode.window.showErrorMessage(
-                    `Version bump failed: ${result.error}`,
+                    `Version bump failed: ${result.error}${hint}`,
                 );
             }
         } finally {

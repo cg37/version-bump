@@ -10,8 +10,16 @@ const currentVersion = ref("");
 const nextVersion = ref("");
 const hasChanges = ref(false);
 
+// Multi-workspace state
+const workspaces = ref<{ path: string; name: string; version: string }[]>([]);
+const selectedWorkspace = ref("");
+
 function onVersionTypeChange() {
     vscode.postMessage({ type: "versionTypeChanged", value: versionType.value });
+}
+
+function onWorkspaceChange() {
+    vscode.postMessage({ type: "workspaceSelected", value: selectedWorkspace.value });
 }
 
 function onBump() {
@@ -27,6 +35,9 @@ onMounted(() => {
             currentVersion.value = msg.current;
             nextVersion.value = msg.next;
             hasChanges.value = msg.hasChanges;
+        } else if (msg.type === "setWorkspaceList") {
+            workspaces.value = msg.workspaces;
+            selectedWorkspace.value = msg.selected;
         }
     });
     // Notify the extension that the webview is ready
@@ -38,6 +49,16 @@ onMounted(() => {
     <div class="container">
         <div>
             <h3>Version Bump</h3>
+        </div>
+
+        <!-- Workspace selector (only shown when >1 workspace) -->
+        <div v-if="workspaces.length > 1" class="section">
+            <label for="workspaceSelect">Workspace</label>
+            <select id="workspaceSelect" v-model="selectedWorkspace" @change="onWorkspaceChange">
+                <option v-for="ws in workspaces" :key="ws.path" :value="ws.path">
+                    {{ ws.name }} (v{{ ws.version }})
+                </option>
+            </select>
         </div>
 
         <!-- Version info card -->

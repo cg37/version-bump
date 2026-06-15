@@ -53,8 +53,21 @@ pnpm v10+ ignores these; keeping them causes confusion.
 
 ## Special case: keytar with vsce
 
-If you use `vsce publish --no-keytar`, keytar is an optional dependency that doesn't need its build scripts to run. It's safe to either:
-- Include it in `only-built-dependencies` (builds it, no harm)
-- Exclude it (pnpm warns but succeeds with exit code 0)
+### `--no-keytar` flag removed in vsce v2.32.0+
 
-The key packages that MUST be in `only-built-dependencies` are `@vscode/vsce-sign` and `esbuild`.
+Older versions of `@vscode/vsce` supported `vsce publish --no-keytar` to skip the native keytar dependency. This flag was **removed** in v2.32.0 and will cause:
+
+```
+error: unknown option '--no-keytar'
+Error: Process completed with exit code 1.
+```
+
+Fix: remove the flag entirely from your CI workflow. keytar is an optional dependency of `@vscode/vsce` and vsce handles its absence automatically.
+
+### pnpm config for keytar
+
+keytar is an optional dependency that doesn't need its build scripts to run when using `vsce publish`. It's safe to either:
+- Include it in `only-built-dependencies` (builds it, no harm)
+- Exclude it (pnpm shows a warning but succeeds with exit code 0)
+
+The packages that MUST be in `only-built-dependencies` are `@vscode/vsce-sign` and `esbuild`.
