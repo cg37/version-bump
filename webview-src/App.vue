@@ -71,7 +71,7 @@ onMounted(() => {
                 {{ isRunning ? "Running..." : "Bump &amp; Push" }}
             </button>
             <div v-if="currentVersion && !hasChanges && !isRunning" class="no-changes-tip">
-                ✓ Nothing to commit — make some changes first
+                ✓ Nothing to bump — no uncommitted changes or unpushed commits
             </div>
         </div>
 

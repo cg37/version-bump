@@ -25,8 +25,8 @@ export async function bumpAndPush(
         if (versionOut) logger.log(versionOut.trim());
         if (versionErr) logger.log(versionErr.trim());
 
-        // Step 2: git push --follow-tags
-        const pushCmd = "git push --follow-tags";
+        // Step 2: push only the new tag (not regular commits)
+        const pushCmd = "git push origin --tags";
         logger.log(`Executing: ${pushCmd}`);
         const { stdout: pushOut, stderr: pushErr } = await exec(pushCmd, {
             cwd,

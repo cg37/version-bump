@@ -9,13 +9,33 @@ import type { WebviewMessage, ExtensionMessage } from "../types/messages";
 
 const exec = util.promisify(childProcess.exec);
 
-/** Returns true when the git working tree has uncommitted changes. */
+/**
+ * Returns false (disable button) only when ALL of the following are true:
+ *   - working tree is clean (no uncommitted changes)
+ *   - local HEAD is at the same commit as origin/master
+ *
+ * In all other cases (has changes, is ahead, git unavailable, etc.) returns true.
+ */
 async function hasGitChanges(cwd: string): Promise<boolean> {
     try {
-        const { stdout } = await exec("git status --porcelain", { cwd });
-        return stdout.trim().length > 0;
+        // 1. Any uncommitted changes → allow
+        const { stdout: statusOut } = await exec("git status --porcelain", { cwd });
+        if (statusOut.trim().length > 0) {
+            return true;
+        }
+
+        // 2. Compare local HEAD with origin/master
+        //    If they differ (local is ahead or behind), allow bump
+        const { stdout: localHash } = await exec("git rev-parse HEAD", { cwd });
+        const { stdout: remoteHash } = await exec("git rev-parse origin/master", { cwd });
+        if (localHash.trim() !== remoteHash.trim()) {
+            return true;
+        }
+
+        // Clean working tree AND same commit as origin/master → nothing to bump
+        return false;
     } catch {
-        // Not a git repo or git not available — don't block the button
+        // Git not available, not a repo, or origin/master doesn't exist — don't block
         return true;
     }
 }
