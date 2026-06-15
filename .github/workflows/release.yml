@@ -1,0 +1,60 @@
+name: Release & Publish
+
+on:
+    push:
+        tags:
+            - "v*"
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Compile extension
+              run: npm run compile
+
+            - name: Package VSIX
+              run: npx @vscode/vsce package --out version-bump-${{ github.ref_name }}.vsix
+
+            - name: Generate release notes
+              id: notes
+              run: |
+                  echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+                  echo "## What's Changed" >> "$GITHUB_OUTPUT"
+                  echo "" >> "$GITHUB_OUTPUT"
+                  prev_tag=$(git tag --sort=-version:refname | head -n2 | tail -n1)
+                  if [ -n "$prev_tag" ]; then
+                    git log --oneline --no-decorate "$prev_tag..HEAD" | sed 's/^/- /' >> "$GITHUB_OUTPUT"
+                  else
+                    git log --oneline --no-decorate | sed 's/^/- /' >> "$GITHUB_OUTPUT"
+                  fi
+                  echo "EOF" >> "$GITHUB_OUTPUT"
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: ${{ github.ref_name }}
+                  name: Release ${{ github.ref_name }}
+                  body: ${{ steps.notes.outputs.notes }}
+                  files: version-bump-${{ github.ref_name }}.vsix
+                  draft: false
+                  prerelease: false
+
+            - name: Publish to VS Code Marketplace
+              run: npx @vscode/vsce publish
+              env:
+                  VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
