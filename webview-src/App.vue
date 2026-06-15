@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { vscode } from "./vscode";
+import { vscode, type ExtensionMessage } from "./vscode";
 
 type VersionType = "patch" | "minor" | "major";
 
 const versionType = ref<VersionType>("patch");
 const isRunning = ref(false);
+const currentVersion = ref("");
+const nextVersion = ref("");
 
 function onVersionTypeChange() {
     vscode.postMessage({ type: "versionTypeChanged", value: versionType.value });
@@ -17,11 +19,16 @@ function onBump() {
 
 onMounted(() => {
     window.addEventListener("message", (event) => {
-        const msg = event.data;
+        const msg = event.data as ExtensionMessage;
         if (msg.type === "setRunningState") {
             isRunning.value = msg.value;
+        } else if (msg.type === "setVersionInfo") {
+            currentVersion.value = msg.current;
+            nextVersion.value = msg.next;
         }
     });
+    // Notify the extension that the webview is ready
+    vscode.postMessage({ type: "ready" });
 });
 </script>
 
@@ -31,17 +38,33 @@ onMounted(() => {
             <h3>Version Bump</h3>
         </div>
 
+        <!-- Version info card -->
+        <div v-if="currentVersion" class="version-card">
+            <div class="version-row">
+                <span class="version-label">Current</span>
+                <span class="version-value">v{{ currentVersion }}</span>
+            </div>
+            <div class="version-arrow">↓</div>
+            <div class="version-row">
+                <span class="version-label">After bump</span>
+                <span class="version-value next">v{{ nextVersion }}</span>
+            </div>
+        </div>
+        <div v-else class="version-empty">
+            No package.json found in workspace
+        </div>
+
         <div class="section">
-            <label for="versionType">Version Type</label>
+            <label for="versionType">Bump Type</label>
             <select id="versionType" v-model="versionType" @change="onVersionTypeChange">
-                <option value="patch">patch (0.0.X)</option>
-                <option value="minor">minor (0.X.0)</option>
-                <option value="major">major (X.0.0)</option>
+                <option value="patch">patch — fix (0.0.X)</option>
+                <option value="minor">minor — feature (0.X.0)</option>
+                <option value="major">major — breaking (X.0.0)</option>
             </select>
         </div>
 
         <div class="section">
-            <button :disabled="isRunning" @click="onBump">
+            <button :disabled="isRunning || !currentVersion" @click="onBump">
                 <span v-if="isRunning" class="spinner"></span>
                 {{ isRunning ? "Running..." : "Bump &amp; Push" }}
             </button>
@@ -82,6 +105,51 @@ h3 {
     color: var(--vscode-descriptionForeground);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Version preview card */
+.version-card {
+    background: var(--vscode-editor-inactiveSelectionBackground);
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.version-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.version-label {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.version-value {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--vscode-editor-font-family, monospace);
+    color: var(--vscode-foreground);
+}
+
+.version-value.next {
+    color: var(--vscode-terminal-ansiGreen);
+}
+
+.version-arrow {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    text-align: center;
+}
+
+.version-empty {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
 }
 
 .section {
@@ -128,7 +196,7 @@ button:disabled {
 .hint {
     font-size: 11px;
     color: var(--vscode-descriptionForeground);
-    margin-top: 8px;
+    margin-top: 4px;
     line-height: 1.4;
 }
 
